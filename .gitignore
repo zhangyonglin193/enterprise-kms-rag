@@ -1,0 +1,96 @@
+# ===== 密钥与凭据（严禁提交） =====
+.env
+.env.*
+*.env
+!.env*.example
+deploy_prod.env
+!deploy_prod.env.example
+!.env.example
+
+# ===== 运行时数据（索引/日志/上传，可重新生成） =====
+# 整个 data/ 都是本机运行时产物：向量索引、分块缓存、数据库备份、
+# 探针脚本与评测报告。克隆后由脚本重建，不入库。
+data/
+data/faiss/
+data/uploads/
+data/docs/
+data/*.log
+data/.ocr_cache/
+data/.emb_cache/
+data/*.pid
+data/reingest.lock
+data/ingest_report.json
+data/rag_server.log
+data/kms_server.log
+data/kms/
+data/gateway/
+data/gw_audit/
+data/bff/
+data/test-runs/
+**/kms_secret.key
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+dist/
+
+# ===== 业务资料与数据集（不入库） =====
+# RAG_repository/ 是第三方与公司内部资料（监管文件、银行操作手册、财报），
+# 既非本项目代码资产，也不得随仓库对外分发；需要时用 scripts/ingest_batch.py
+# 从本地目录重新入库。
+RAG_repository/
+test_file/
+kms-test-cases/
+
+# ===== 一次性个人脚本（含真实人事数据 / 本机数据库口令） =====
+/init_real_users.py
+/fill_empty_depts.py
+/fix_tickets.py
+/_e2e.py
+/_test_*.py
+scripts/_e2e_*.py
+scripts/_kms_fixture.py
+scripts/cleanup_stale_requests.py
+
+# ===== 交付物与演示素材（二进制文档、截图、打包文本） =====
+交付文档/
+*.pptx
+docs/*.docx
+docs/*.pdf
+docs/*副本*
+PROJECT_FULL_BUNDLE.md
+/step*.png
+
+# ===== AI 助手 / IDE 过程产物 =====
+.qoder/
+.workbuddy/
+.trae/
+.runtime/
+
+# ===== 前端构建（Vue 试点工程 frontend/，方案见 docs/frontend_architecture.md §9） =====
+frontend/node_modules/
+frontend/dist/
+# 注 1：kms/web/dist/ 已由上方 `dist/` 规则忽略——它是构建产物，不入 git。
+#       发布/CI 必须先构建：`npm --prefix frontend ci && npm --prefix frontend run build`
+# 注 2：kms/web/dist-app/ **要入库**：它是自包含产物（Vue 运行时已打进
+#       kms-app.js，约 257KB），服务端直接挂载该目录，缺了前端页面就是空白。
+# 注 3：package-lock.json **必须入库**，否则 CI 的 npm ci 无法复现依赖版本。
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+env/
+
+# ===== IDE / OS =====
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ===== 临时文件 =====
+*.tmp
+~$*

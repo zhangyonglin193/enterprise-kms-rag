@@ -1,0 +1,24 @@
+# Ruff 配置
+#
+# 背景：CI 的 "Lint" 步骤直接执行 `ruff check app kms gateway scripts tests config.py`
+# （不带任何参数），因此门禁强度完全由此文件决定。此前仓库没有配置文件，ruff 走
+# 默认规则集；一旦 CI 真正执行就会暴露大量历史告警。这里把规则集**显式固定**，
+# 避免 ruff 版本升级时门禁强度静默变化。
+
+target-version = "py311"
+
+[lint]
+# E4/E7/E9：pycodestyle 的实用子集（缩进、空行、比较、语法类问题）
+# F：pyflakes（未使用导入/变量、未定义名、重复定义等）
+# 刻意不引入 ALL：规则集应保持小而稳定，让贡献者能一眼看懂"红线在哪"。
+select = ["E4", "E7", "E9", "F"]
+
+[lint.per-file-ignores]
+# E402（模块级 import 不在文件顶部）：本项目在 tests/ 与 scripts/ 中**必须**
+# 先调用 apply_environment() 装配环境，再导入 kms.* / app.*——
+# config.Settings 的类属性默认值在模块首次导入时求值，导入顺序错误会把
+# KMS_*_EMPLOYEES 冻结为空并污染其它离线测试（各测试文件头部均有此说明）。
+# 这是既定模式而非缺陷，故按目录豁免；生产代码（app/kms/gateway）不受豁免，
+# 仍需保持导入位于顶部。
+"tests/**" = ["E402"]
+"scripts/**" = ["E402"]

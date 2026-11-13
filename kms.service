@@ -1,0 +1,23 @@
+# 用户级 systemd 模板；将 /opt/unionpay-rag 替换为实际绝对路径。
+[Unit]
+Description=Enterprise KMS Gateway 6342
+After=network.target
+StartLimitIntervalSec=120
+StartLimitBurst=3
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/unionpay-rag
+ExecStart=/opt/unionpay-rag/venv/bin/python /opt/unionpay-rag/scripts/service.py kms --env /opt/unionpay-rag/.env.kms --qa-env /opt/unionpay-rag/.env
+Environment=PYTHONUNBUFFERED=1
+UMask=0077
+NoNewPrivileges=true
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=90
+KillSignal=SIGTERM
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

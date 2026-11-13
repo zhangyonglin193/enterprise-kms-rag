@@ -1,0 +1,23 @@
+# 用户级 systemd 模板；将 /opt/unionpay-rag 替换为实际绝对路径。
+[Unit]
+Description=RAG Competition QA 6341
+After=network.target
+StartLimitIntervalSec=120
+StartLimitBurst=3
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/unionpay-rag
+ExecStart=/opt/unionpay-rag/venv/bin/python /opt/unionpay-rag/scripts/service.py qa --env /opt/unionpay-rag/.env
+Environment=PYTHONUNBUFFERED=1
+UMask=0077
+NoNewPrivileges=true
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=60
+KillSignal=SIGTERM
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

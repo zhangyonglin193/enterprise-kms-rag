@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!--
+  企业知识服务平台 · 工作台入口（Vue 架构）
+
+  前端已整体迁移为 Vue 架构（frontend/ 源码），本页是唯一入口：
+    访问：http://<host>:6342/（根路径由 run_kms.py 返回本文件）
+    产物：/static/dist-app/kms-app.js（frontend/ 经 vite.app.config.js 构建）
+    样式：主站 /static/style.css 提供全部基础类（view/panel/table/modal/
+          notif/upload/ticket/chunk 等），/static/dist-app/kms-app.css 只补
+          主站没有的少量类（键值列表、分页器等）。亮/暗主题自动跟随主站。
+
+  历史注记：经典脚本版前端（app.js + js/app.js 装配入口）已于 Vue 迁移
+  完成后删除；js/core、js/sdk、js/ui 下的共享层仍保留，供本工作台
+  （构建期 @kms 别名引用）与嵌入式组件 knowledge-widget.js 复用。
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>知识文档管理系统</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/dist-app/kms-app.css" />
+</head>
+<body>
+  <div id="kms-app-root"></div>
+
+  <script type="module">
+    import { mount } from "/static/dist-app/kms-app.js";
+    try {
+      mount("#kms-app-root");
+    } catch (e) {
+      document.getElementById("kms-app-root").innerHTML =
+        `<div class="state-box state-box--error">
+           <span class="state-title">挂载失败</span>
+           <span class="state-desc">${String((e && e.message) || e)}</span>
+         </div>`;
+    }
+  </script>
+</body>
+</html>

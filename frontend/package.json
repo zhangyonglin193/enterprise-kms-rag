@@ -1,0 +1,24 @@
+{
+  "name": "kms-frontend-pilot",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "KMS 前端 Vue 试点工程：构建产物自托管，运行期零外链",
+  "scripts": {
+    "lint": "eslint src",
+    "build": "vite build",
+    "build:app": "vite build --config vite.app.config.js",
+    "watch": "vite build --watch",
+    "watch:app": "vite build --config vite.app.config.js --watch"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "eslint": "^10.13.0",
+    "eslint-plugin-vue": "^10.11.1",
+    "vite": "^6.0.11"
+  }
+}

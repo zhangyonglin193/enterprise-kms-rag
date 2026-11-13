@@ -1,0 +1,92 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 —— 冻结面守卫需要拿到基线提交才能 diff；
+      # 默认浅克隆（depth=1）下 github.event.before 对象不存在，git diff 会失败，
+      # 而失败时 stderr 无输出会让守卫「静默放行」，等于门禁失效。
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install ruff
+      - name: Lint (new code must be clean)
+        run: ruff check app kms gateway scripts tests config.py
+      - name: Offline regression suite (Python)
+        run: python -m unittest discover -s tests
+      # 必须用 glob，不能传目录名：Node 22 会把 `node --test tests/frontend/`
+      # 当成模块去加载并报 MODULE_NOT_FOUND —— 门禁会一次都没测到东西。
+      # （历史上正是如此：该门禁从未真正执行过，修复前 2/3 的测试文件根本跑不起来。）
+      # glob 不匹配时 bash 原样透传，node 报错而非零退出，属于 fail-closed。
+      # Vue 试点产物必须在这里构建：kms/web/dist/ 被 .gitignore 的 `dist/` 规则忽略、
+      # 不入 git，因此发布包里的组件只能由 CI 现场构建产出。
+      # package-lock.json 必须入库，npm ci 才能复现依赖版本。
+      # （尚未提交 frontend/ 时本步骤会报找不到 package.json——这是真实缺失，修它的方法是提交该目录。）
+      - name: "Build frontend pilot bundle (Vue, self-hosted)"
+        run: |
+          npm --prefix frontend ci
+          npm --prefix frontend run build
+
+      - name: "Frontend behaviour tests (node --test, zero npm deps)"
+        run: node --test tests/frontend/*.test.js
+      # 注意：name 中的「冒号+空格」会被 YAML 解析成嵌套映射，必须加引号，
+      # 否则整个 workflow 无法被 GitHub 解析——门禁会静默地一次都不执行。
+      - name: "Guard: no runtime external references in web assets"
+        # 内网部署红线：kms/web 下禁止引用公网 CDN/外部脚本
+        run: |
+          if grep -rEn '(src|href)="https?://' kms/web --include='*.html' --include='*.js' --include='*.css'; then
+            echo "::error::kms/web 存在运行期外链，内网部署不可接受"
+            exit 1
+          fi
+      - name: "Guard: QA evaluation service (port 6341) must not change"
+        # MCP/企业侧演进不得触碰赛题问答契约；app/ 与 api.py 属冻结面。
+        # push 与 pull_request 的基线来源不同：PR 事件没有 github.event.before，
+        # 需改用 pull_request.base.sha；首推（before 为全零）退化到默认分支。
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BASE="$BASE_SHA"
+          else
+            BASE="$BEFORE_SHA"
+          fi
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            # 首次推送时远端还没有任何提交，不存在可比对的基线。
+            # 只有确实取到基线才继续比对；取不到即判定为首推并跳过，
+            # 避免把「仓库第一次提交」误报成冻结面被破坏。
+            if [ -n "$BASE_REF" ] && git fetch --no-tags --prune --depth=1 origin "$BASE_REF"; then
+              BASE="origin/$BASE_REF"
+            else
+              echo "::notice::无可比对基线（首次推送），冻结面守卫本次跳过；后续提交将严格比对。"
+              exit 0
+            fi
+          fi
+          # 拿不到基线时必须显式失败：否则「比较不出来」会被误判为「没有改动」
+          if ! CHANGED="$(git diff --name-only "$BASE" "$HEAD_SHA")"; then
+            echo "::error::无法与基线 $BASE 比较，冻结面守卫未生效（需检查 fetch-depth）"
+            exit 1
+          fi
+          if echo "$CHANGED" | grep -E '^(app/|api\.py)$'; then
+            echo "::error::app/ (QA 6341 问答内核) 被修改；按项目约束该目录冻结，MCP 升级只允许改 gateway/kms/config/run_kms。"
+            exit 1
+          fi
+          echo "冻结面守卫通过（基线 $BASE）"
+      - name: Release packaging check
+        run: python scripts/package_release.py --check
