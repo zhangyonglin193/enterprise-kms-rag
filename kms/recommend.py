@@ -230,7 +230,7 @@ class OrgProfileStrategy(Strategy):
             owner_path = row.get("owner_org_path") or ""
             if owner_path == user.org_path or (owner_path and owner_path.startswith(user.org_path + "/")):
                 result[int(row["document_id"])] = 1.0
-            elif user.department and _resolve_departments(row, user.department):
+            elif user.department and _user_in_doc_departments(row, user.department):
                 result[int(row["document_id"])] = 0.5
         return result
 

@@ -33,7 +33,7 @@ from app.logger import get_logger
 from app.store import MySQLStore
 
 from .constants import (DOC_DEPT_UNLIMITED, HR_EMPLOYMENT_STAFF, HR_STATUS_REGULAR,
-                        HR_STATUS_TRIAL, MAX_EMPLOYEE_LEVEL, PUBLIC_LEVEL,
+                        HR_STATUS_TRIAL, MAX_EMPLOYEE_LEVEL,
                         SECURITY_LEVELS, SECURITY_LEVEL_CONFIDENTIAL,
                         normalize_department)
 from .security import AuthUser, hash_password
