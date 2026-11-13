@@ -127,8 +127,13 @@ npm --prefix frontend run build:app
 node --test tests/frontend/*.test.js     # 前端行为测试，零 npm 依赖
 ```
 
-测试全部离线运行，不访问模型服务、不连数据库。CI 定义见
-[.github/workflows/ci.yml](.github/workflows/ci.yml)，包含单元回归、ruff 检查、
+绝大多数用例离线运行，不访问模型服务、不连数据库。例外是
+`tests/test_admin_options.py` 中两个「选项取自库中真实数据」的契约用例：它们
+需要可达的 MySQL，库不可达时**显式跳过**并给出原因。CI 不提供数据库，故这两
+项在 CI 上跳过；本地配好 `.env` 并启动 MySQL 后它们照常执行。不用 mock 顶替真库
+是有意的：否则「把查询换成写死常量清单」这类回归会照样通过，门禁就失效了。
+
+CI 定义见 [.github/workflows/ci.yml](.github/workflows/ci.yml)，包含单元回归、ruff 检查、
 前端构建、运行期外链守卫与 `app/` 冻结面守卫。
 
 ## 数据与合规说明

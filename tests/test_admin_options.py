@@ -18,6 +18,13 @@
 
 刻意只校验**结构不校验内容**：QA 库（rag_competition）与 KMS 库
 （enterprise_kms）的数据量不同，断言具体数量会让测试随库切换而红。
+
+运行前提
+--------
+本文件是**连真库**的契约门禁，不属于离线单测。库不可达时，两个依赖
+库数据的用例会被**显式跳过**（skip 原因可见），而不是伪装成通过。
+CI 的 offline-tests job 不提供 MySQL，也没有 .env（已 gitignore），因此
+在那里这两项按设计跳过；本地配好 .env 并启动 MySQL 后它们照常执行。
 """
 from __future__ import annotations
 
@@ -42,6 +49,33 @@ for _key in ("MYSQL_HOST", "MYSQL_PORT", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_
                 int(_env[_key]) if _key == "MYSQL_PORT" else _env[_key])
 
 from kms import admin_routes, security  # noqa: E402
+
+
+def _contract_db_reachable() -> bool:
+    """探测契约库是否可达。
+
+    不用 mock 顶替数据库：本文件要守的正是「选项取自库中真实数据」，
+    一旦用假数据喂进去，「把查询换成写死常量清单」这类回归也会照样
+    通过，等于废掉门禁。所以保留真库依赖，仅在库确实不可达时跳过。
+    """
+    import pymysql
+    try:
+        conn = pymysql.connect(
+            host=settings.mysql_host,
+            port=int(settings.mysql_port),
+            user=settings.mysql_user,
+            password=settings.mysql_password,
+            database=settings.mysql_database,
+            connect_timeout=3,
+        )
+    except Exception:
+        return False
+    conn.close()
+    return True
+
+
+_DB_OK = _contract_db_reachable()
+_SKIP_NO_DB = "契约库不可达（缺 .env 或 MySQL 未启动）：本用例需连真库，跳过而非伪造通过"
 
 
 def _build_client() -> TestClient:
@@ -83,6 +117,7 @@ class OptionEndpointContractTest(unittest.TestCase):
         for i in items:
             self.assertTrue(i["name"], "每档都必须有名称，滑动条刻度要用")
 
+    @unittest.skipUnless(_DB_OK, _SKIP_NO_DB)
     def test_departments_carry_counts(self) -> None:
         """部门来自 HR 同步数据，且回带人数/文档数供前端避免选到空部门。"""
         r = self.client.get("/kms/api/admin/departments")
@@ -95,6 +130,7 @@ class OptionEndpointContractTest(unittest.TestCase):
             for key in ("employee_count", "doc_count", "in_org_tree"):
                 self.assertIn(key, it, f"{it['name']} 缺少字段 {key}")
 
+    @unittest.skipUnless(_DB_OK, _SKIP_NO_DB)
     def test_audit_actions_come_from_real_logs(self) -> None:
         """审计操作类型取自库中实际出现过的动作，不是写死的常量清单。"""
         r = self.client.get("/kms/api/audit/audit-actions")
